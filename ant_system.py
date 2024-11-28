@@ -106,8 +106,9 @@ class Ant:
 
 # }}}
 
-
 # [[ Functions ]] {{{
+
+
 def iteration(n: int, /) -> Ant:
     """
     A single iteration of the Ant System algorithm.
@@ -120,6 +121,7 @@ def iteration(n: int, /) -> Ant:
     # all cities are already occupied
     starting_cities = set()
 
+    ants = []
     for i in range(ant_count):
         # start at a vacant city
         while True:
@@ -130,10 +132,9 @@ def iteration(n: int, /) -> Ant:
             ):
                 starting_cities.add(starting_city)
                 break
+        ants.append(Ant(starting_city))
 
-        current_ant = Ant(starting_city)
-
-    return Ant(dummy=True)
+    return min(ants, key=lambda a: a.tour_length)
 
 
 # }}}
@@ -142,9 +143,15 @@ def iteration(n: int, /) -> Ant:
 def main():
     global_best: Ant = Ant(dummy=True)
     for i in range(iterations):
-        global_best = min(iteration(i), global_best)
+        current = iteration(i)
+        print(f"Iteration {i+1} best: {current.path} : {current.tour_length}")
+        global_best = min(current, global_best)
 
     assert global_best.path, "global_best path should not be None"
+
+    print("---" * 13)
+    print(f"{'TEST PATH': <16}: BEST TOUR LENGTH")
+    print(f"{global_best.path} : {global_best.tour_length}")
 
 
 if __name__ == "__main__":
