@@ -5,6 +5,7 @@ from typing import TypeAlias, TypeVar
 from collections import namedtuple
 from functools import total_ordering
 from random import randint
+from sys import argv
 
 # [[ Variables ]] {{{
 
@@ -40,42 +41,58 @@ beta = 2
 class Ant:
     def __init__(
         self,
-        start_node: int | None = None,
+        start_node: int = -1,
         *,
         dummy: bool = False,
     ) -> None:
         """
+        Ant object representing the state of an individual ant in the system.
+
         :param start_node: The node where the ant starts pathfinding
         :param dummy: Whether the Ant is just made for the initial comparison
+
+        :attr path: the path taken by the ant
+        :attr __to_visit: private set for determining the path,
+                          also known as set J_k
+        :attr tour_length: the length of the tour
+        :attr path_pairs: the path but in pairs, for ease of checking in
+                          pheromone updating
         """
-        if not dummy and start_node:
+        if not dummy and start_node >= 0:
             self.path: list[int] = [start_node]
-            self.to_visit: set[int] = set(range(len(input_data))) - set(
+            self.__to_visit: set[int] = set(range(len(input_data))) - set(
                 self.path
             )
             self.tour_length: float = self.__calculate_tour()
+
+            # for pheromone updating
+            self.path_pairs: set[tuple[int, int]] = {
+                (self.path[i], self.path[i + 1]) for i in range(dimensions - 1)
+            }
             return
 
         self.tour_length = 1000  # for initial comparison
 
     def __calculate_tour(self) -> float:
-        while self.to_visit:
+        # state transition rule
+        while self.__to_visit:
             best: City = City(-1, -1.0)  # dummy values
             denominator: float = sum(
-                self.__calculate_term(n) for n in self.to_visit
+                self.__calculate_term(n) for n in self.__to_visit
             )
 
             # find the best next city
-            for next_city in self.to_visit:
+            for next_city in self.__to_visit:
                 numerator: float = self.__calculate_term(next_city)
 
                 if (numerator / denominator) > best.probability:
                     best = City(next_city, numerator / denominator)
 
             # move to the next city
-            self.to_visit.remove(best.city)
+            self.__to_visit.remove(best.city)
             self.path.append(best.city)
 
+        # sum all of the path pairss
         return sum(
             input_data[self.path[i]][self.path[i + 1]]
             for i in range(dimensions - 1)
@@ -103,6 +120,9 @@ class Ant:
         assert isinstance(value, Ant), "comparison only works for Ant to Ant"
         return self.tour_length == value.tour_length
 
+    def __repr__(self) -> str:
+        return f"{self.path} : {self.tour_length}"
+
 
 # }}}
 
@@ -119,10 +139,11 @@ def iteration(n: int, /) -> Ant:
 
     # hashset to ensure to repetition of starting city unless
     # all cities are already occupied
-    starting_cities = set()
+    starting_cities: set[int] = set()
+    ants: list[Ant] = []
 
-    ants = []
-    for i in range(ant_count):
+    # the ants go on their tours
+    for _ in range(ant_count):
         # start at a vacant city
         while True:
             starting_city = randint(0, 4)
@@ -134,6 +155,22 @@ def iteration(n: int, /) -> Ant:
                 break
         ants.append(Ant(starting_city))
 
+    # the ants leave behind their pheromones
+    # (global updating rule)
+    for m in range(dimensions):
+        for n in range(dimensions):
+            # rate at which the pheromone is decayed from the path
+            first_term = (1 - alpha) * tau[m][n]
+
+            # sum all pheromones deposited by the ants on their tour
+            second_term = sum(
+                1 / input_data[m][n]
+                for ant in ants
+                if (m, n) in ant.path_pairs
+            )
+
+            tau[m][n] = first_term + second_term
+
     return min(ants, key=lambda a: a.tour_length)
 
 
@@ -144,15 +181,17 @@ def main():
     global_best: Ant = Ant(dummy=True)
     for i in range(iterations):
         current = iteration(i)
-        print(f"Iteration {i+1} best: {current.path} : {current.tour_length}")
+        print(f"Iteration {i+1} best: {current}")
         global_best = min(current, global_best)
 
     assert global_best.path, "global_best path should not be None"
 
     print("---" * 13)
     print(f"{'TEST PATH': <16}: BEST TOUR LENGTH")
-    print(f"{global_best.path} : {global_best.tour_length}")
+    print(global_best)
 
 
 if __name__ == "__main__":
+    if len(argv) == 2:
+        iterations = int(argv[1])
     main()
