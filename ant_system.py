@@ -171,7 +171,7 @@ def iteration(n: int, /) -> Ant:
 
             tau[m][n] = first_term + second_term
 
-    return min(ants, key=lambda a: a.tour_length)
+    return min(ants)
 
 
 # }}}
