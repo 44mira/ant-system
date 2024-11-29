@@ -63,11 +63,13 @@ class Ant:
             self.__to_visit: set[int] = set(range(len(input_data))) - set(
                 self.path
             )
+
+            # this solves for tour_length and sets the final path
             self.tour_length: float = self.__calculate_tour()
 
             # for pheromone updating
             self.path_pairs: set[tuple[int, int]] = {
-                (self.path[i], self.path[i + 1]) for i in range(dimensions - 1)
+                (self.path[i], self.path[i + 1]) for i in range(dimensions)
             }
             return
 
@@ -92,10 +94,13 @@ class Ant:
             self.__to_visit.remove(best.city)
             self.path.append(best.city)
 
+        # return back to the original city
+        self.path.append(self.path[0])
+
         # sum all of the path pairss
         return sum(
             input_data[self.path[i]][self.path[i + 1]]
-            for i in range(dimensions - 1)
+            for i in range(dimensions)
         )
 
     def __calculate_term(self, next_city: int) -> float:
@@ -121,7 +126,8 @@ class Ant:
         return self.tour_length == value.tour_length
 
     def __repr__(self) -> str:
-        return f"{self.path} : {self.tour_length}"
+        display_path = [city + 1 for city in self.path]
+        return f"{display_path} : {self.tour_length}"
 
 
 # }}}
@@ -186,7 +192,7 @@ def main():
 
     assert global_best.path, "global_best path should not be None"
 
-    print("---" * 13)
+    print("---" * 15)
     print(f"{'TEST PATH': <16}: BEST TOUR LENGTH")
     print(global_best)
 
